@@ -1,0 +1,18 @@
+period:
+  start_day: 21
+  end_day: 20
+
+rules:
+  daily_min_staff: 3
+  daily_max_staff: 5
+  min_soba_staff_weekday: 1
+  min_soba_staff_holiday: 1
+  max_consecutive_work_days: 5
+
+staff_defaults:
+  work_hours: "9:00-18:00"
+  soba_hours: "8:00-17:00"
+  
+output:
+  file: "shift_schedule_final.xlsx"
+  sheet_name: "シフト表"
