@@ -1,0 +1,5 @@
+streamlit>=1.53.0
+pandas>=1.4.0
+openpyxl>=3.0.0
+ortools>=9.0
+pyyaml>=6.0
