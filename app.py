@@ -50,7 +50,7 @@ with st.sidebar:
         st.error("❌ constraints.yaml が見つかりません")
 
 # タブを作成
-tab1, tab2, tab3 = st.tabs(["🚀 シフト最適化", "📋 設定ファイル確認", "⚙️ 制約条件設定"])
+tab1, tab2, tab3, tab4 = st.tabs(["🚀 シフト最適化", "📋 設定ファイル確認", "📝 希望休入力", "⚙️ 制約条件設定"])
 
 # タブ1: シフト最適化
 with tab1:
@@ -172,8 +172,81 @@ with tab2:
     else:
         st.warning("⚠️ constraints.yaml が見つかりません")
 
-# タブ3: 制約条件設定
+# タブ3: 希望休入力
 with tab3:
+    st.subheader("📝 希望休の入力・編集")
+    
+    if os.path.exists('Shift_Input.xlsx'):
+        try:
+            # 希望休シートを読み込み
+            df_wish = pd.read_excel('Shift_Input.xlsx', sheet_name='希望休', header=0)
+            
+            st.info("各スタッフの希望休を入力してください。空白、希休、有休、休から選択できます。")
+            
+            # データエディタで編集可能にする
+            # 日付列以外の列をプルダウン対応にする
+            column_config = {}
+            for col in df_wish.columns:
+                if col != '日付' and col != 'Unnamed: 0':
+                    column_config[col] = st.column_config.SelectboxColumn(
+                        col,
+                        options=["", "希休", "有休", "休"],
+                        default=""
+                    )
+            
+            # 編集可能なデータフレーム
+            edited_df = st.data_editor(
+                df_wish,
+                column_config=column_config,
+                num_rows="fixed",
+                use_container_width=True,
+                height=500
+            )
+            
+            # 保存ボタン
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("💾 希望休を保存", type="primary"):
+                    try:
+                        # 既存のExcelファイルを読み込み
+                        with pd.ExcelFile('Shift_Input.xlsx') as xls:
+                            # 全シートを読み込み
+                            sheets = {}
+                            for sheet_name in xls.sheet_names:
+                                if sheet_name != '希望休':
+                                    sheets[sheet_name] = pd.read_excel(xls, sheet_name=sheet_name, header=None if sheet_name == '設定' else 0)
+                        
+                        # 希望休シートを更新
+                        sheets['希望休'] = edited_df
+                        
+                        # Excelファイルに書き戻し
+                        with pd.ExcelWriter('Shift_Input.xlsx', engine='openpyxl') as writer:
+                            for sheet_name, df in sheets.items():
+                                df.to_excel(writer, sheet_name=sheet_name, index=False, header=True if sheet_name != '設定' else False)
+                        
+                        st.success("✅ 希望休を保存しました！")
+                        st.balloons()
+                    except Exception as e:
+                        st.error(f"❌ 保存に失敗しました: {e}")
+            
+            with col2:
+                # ダウンロードボタン
+                with open('Shift_Input.xlsx', 'rb') as f:
+                    st.download_button(
+                        label="⬇️ 更新したファイルをダウンロード",
+                        data=f,
+                        file_name="Shift_Input.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+        
+        except Exception as e:
+            st.error(f"❌ エラーが発生しました: {e}")
+            st.exception(e)
+    else:
+        st.warning("⚠️ Shift_Input.xlsx が見つかりません")
+
+# タブ4: 制約条件設定
+with tab4:
     st.subheader("⚙️ 制約条件の編集")
     
     if os.path.exists('constraints.yaml'):
