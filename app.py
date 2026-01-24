@@ -333,7 +333,7 @@ with tab3:
                 if st.button("💾 希望休を保存", type="primary"):
                     try:
                         from openpyxl import load_workbook
-                        from openpyxl.styles import PatternFill, Font, Border, Side
+                        from openpyxl.styles import PatternFill, Font, Border, Side, numbers
                         
                         # 既存のExcelファイルを読み込み
                         with pd.ExcelFile('Shift_Input.xlsx') as xls:
@@ -359,8 +359,16 @@ with tab3:
                             for sheet_name, df in sheets.items():
                                 df.to_excel(writer, sheet_name=sheet_name, index=False, header=True if sheet_name != '設定' else False)
                         
-                        # スタイリングを適用
+                        # スタイリングを適用とフォーマット修正
                         wb = load_workbook('Shift_Input.xlsx')
+                        
+                        # 設定シートのD列の日付フォーマットを修正
+                        ws_settings = wb['設定']
+                        for row in range(1, ws_settings.max_row + 1):
+                            cell = ws_settings.cell(row, 4)  # D列
+                            if cell.value:
+                                cell.number_format = 'yyyy-mm-dd'  # 日付のみ表示
+                        
                         ws = wb['希望休']
                         
                         # 罫線の定義
