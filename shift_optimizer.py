@@ -35,7 +35,16 @@ def solve():
     period_config = constraints['period']
     start_day = period_config['start_day']
     end_day = period_config['end_day']
-    holidays_list = period_config.get('holidays', [])
+    
+    # 祝日を設定シートのD列から読み込み
+    holidays_list = []
+    for i in range(len(df_set)):
+        if pd.notna(df_set.iloc[i, 3]):  # D列（index=3）
+            try:
+                holiday_date = pd.to_datetime(df_set.iloc[i, 3])
+                holidays_list.append(holiday_date.strftime('%Y-%m-%d'))
+            except:
+                pass
     
     # 21日〜翌月20日 (または指定された日付範囲)
     date_list = []
@@ -129,6 +138,27 @@ def solve():
         # 連続休日を最大3日に制限（休みを分散させる）
         for d_idx in range(len(date_list) - 3):
             model.Add(sum(1 - shifts[(name, d_idx + k)] for k in range(4)) <= 3)
+    
+    # そば打ちを古藤・石橋・佐伯で公平に配分
+    soba_staff = []
+    for _, s_row in df_staff.iterrows():
+        name = str(s_row['名前'])
+        clean_name = name.replace('●', '').strip()
+        if s_row['そば打ち'] == '〇' and clean_name in ['古藤', '石橋', '佐伯']:
+            soba_staff.append(name)
+    
+    if len(soba_staff) >= 2:
+        # 各スタッフのそば打ち回数を計算
+        soba_counts = []
+        for name in soba_staff:
+            count = sum(soba[(name, d_idx)] for d_idx in range(len(date_list)))
+            soba_counts.append(count)
+        
+        # 最大と最小の差を2回以内に制限（公平性を保つ）
+        for i in range(len(soba_counts)):
+            for j in range(i+1, len(soba_counts)):
+                model.Add(soba_counts[i] - soba_counts[j] <= 2)
+                model.Add(soba_counts[j] - soba_counts[i] <= 2)
 
     # --- 4. 実行と結果出力 ---
     solver = cp_model.CpSolver()
@@ -322,9 +352,10 @@ def solve():
                 cell.alignment = center_align
                 cell.font = Font(bold=True)
             
-            # データ行
-            for row_idx, (res_item, row_data) in enumerate(zip(res + stats_rows, ws.iter_rows(min_row=2, max_row=len(res) + len(stats_rows) + 1)), start=2):
-                for col_idx, cell in enumerate(row_data, start=1):
+            # データ行（シフト表の日付行のみ、統計行は除く）
+            for row_idx in range(2, len(res) + 2):  # 2行目から日付行の最後まで
+                res_item = res[row_idx - 2]
+                for col_idx, cell in enumerate(ws[row_idx], start=1):
                     cell.border = thin_border
                     cell.alignment = center_align
                     
@@ -338,9 +369,9 @@ def solve():
                             # 祝日判定
                             date_str = res_item.get('日付', '')
                             is_holiday_date = False
-                            if date_str:
+                            if date_str and '/' in date_str:
                                 try:
-                                    d, m = map(int, date_str.split('/'))
+                                    m, d = map(int, date_str.split('/'))
                                     check_date = datetime.date(year, m, d)
                                     is_holiday_date = check_date in holiday_dates
                                 except:
@@ -370,6 +401,13 @@ def solve():
                             cell.font = black_font
                         else:
                             cell.font = black_font
+            
+            # 統計行（色付けなし、罫線と中央揃えのみ）
+            for row_idx in range(len(res) + 2, len(res) + len(stats_rows) + 2):
+                for cell in ws[row_idx]:
+                    cell.border = thin_border
+                    cell.alignment = center_align
+                    cell.font = Font(size=11)
         
         print("✅ 完了！色付けと出勤人数を追加した『shift_schedule_final.xlsx』を作成しました。")
     else:
