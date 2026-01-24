@@ -352,15 +352,15 @@ def solve():
                                top=Side(style='thin'), bottom=Side(style='thin'))
             center_align = Alignment(horizontal='center', vertical='center')
             
-            # 色定義
-            blue_font = Font(color='0070C0', size=11)  # 青文字
-            red_font = Font(color='FF0000', size=11)   # 赤文字
-            black_font = Font(color='000000', size=11)  # 黒文字
-            holiday_fill = PatternFill(start_color='FF0000', end_color='FF0000', fill_type='solid')  # 背景赤
-            holiday_font = Font(color='FFFFFF', bold=True, size=11)  # 白文字、太字
-            kibo_fill = PatternFill(start_color='FFFF00', end_color='FFFF00', fill_type='solid')  # 背景黄色
-            yukyuu_fill = PatternFill(start_color='FFA500', end_color='FFA500', fill_type='solid')  # 背景オレンジ
-            kyuu_fill = PatternFill(start_color='D3D3D3', end_color='D3D3D3', fill_type='solid')  # 背景薄い灰色
+            # 色定義（RGBカラーコードは'FF'で始める必要がある）
+            blue_font = Font(color='FF0070C0', size=11)  # 青文字（土曜日）
+            red_font = Font(color='FFFF0000', size=11)   # 赤文字（日曜日）
+            black_font = Font(color='FF000000', size=11)  # 黒文字
+            holiday_fill = PatternFill(start_color='FFFF0000', end_color='FFFF0000', fill_type='solid')  # 背景赤
+            holiday_font = Font(color='FFFFFFFF', bold=True, size=11)  # 白文字、太字
+            kibo_fill = PatternFill(start_color='FFFFFF00', end_color='FFFFFF00', fill_type='solid')  # 背景黄色
+            yukyuu_fill = PatternFill(start_color='FFFFA500', end_color='FFFFA500', fill_type='solid')  # 背景オレンジ
+            kyuu_fill = PatternFill(start_color='FFD3D3D3', end_color='FFD3D3D3', fill_type='solid')  # 背景薄い灰色
             
             # ヘッダー行（1行目）
             for col_idx, cell in enumerate(ws[1], start=1):
