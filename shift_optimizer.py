@@ -127,6 +127,9 @@ def solve():
         # そば打ち1名制約
         model.Add(sum(soba[(s['名前'], d_idx)] for _, s in df_staff.iterrows()) == 1)
 
+    # 連続勤務のペナルティを計算するための変数
+    long_consecutive_work = {}
+    
     for _, s_row in df_staff.iterrows():
         name = s_row['名前']
         # 月間合計出勤日数 = 全日数 - 月間休日数
@@ -138,6 +141,30 @@ def solve():
         # 連続休日を最大3日に制限（休みを分散させる）
         for d_idx in range(len(date_list) - 3):
             model.Add(sum(1 - shifts[(name, d_idx + k)] for k in range(4)) <= 3)
+        
+        # 5連続勤務の回数をカウント（公平性のため）
+        long_consecutive_work[name] = []
+        for d_idx in range(len(date_list) - 4):
+            is_5_consecutive = model.NewBoolVar(f'long_consec_{name}_{d_idx}')
+            # 5日連続勤務している場合にis_5_consecutive=1
+            model.Add(sum(shifts[(name, d_idx + k)] for k in range(5)) == 5).OnlyEnforceIf(is_5_consecutive)
+            model.Add(sum(shifts[(name, d_idx + k)] for k in range(5)) <= 4).OnlyEnforceIf(is_5_consecutive.Not())
+            long_consecutive_work[name].append(is_5_consecutive)
+    
+    # 各スタッフの長い連続勤務回数を公平に（差を最小化）
+    staff_long_consec_counts = []
+    for _, s_row in df_staff.iterrows():
+        name = s_row['名前']
+        if name in long_consecutive_work and long_consecutive_work[name]:
+            count = sum(long_consecutive_work[name])
+            staff_long_consec_counts.append(count)
+    
+    # スタッフ間で5連続勤務の回数の差を制限
+    if len(staff_long_consec_counts) >= 2:
+        for i in range(len(staff_long_consec_counts)):
+            for j in range(i+1, len(staff_long_consec_counts)):
+                model.Add(staff_long_consec_counts[i] - staff_long_consec_counts[j] <= 2)
+                model.Add(staff_long_consec_counts[j] - staff_long_consec_counts[i] <= 2)
     
     # そば打ちを古藤・石橋・佐伯で公平に配分
     soba_staff = []
@@ -172,9 +199,19 @@ def solve():
             model.Add(soba[(name, d_idx)] + soba[(name, d_idx + 1)] <= 1).OnlyEnforceIf(consecutive.Not())
             consecutive_soba_penalties.append(consecutive)
     
-    # 連続そば打ちを最小化する（目的関数）
-    if consecutive_soba_penalties:
+    # 全スタッフの長い連続勤務をペナルティとして集計
+    all_long_consecutive_penalties = []
+    for name in long_consecutive_work:
+        all_long_consecutive_penalties.extend(long_consecutive_work[name])
+    
+    # 連続そば打ちと長い連続勤務を最小化する（目的関数）
+    if consecutive_soba_penalties and all_long_consecutive_penalties:
+        # そば打ちの連続を10倍重視、長い連続勤務を1倍
+        model.Minimize(10 * sum(consecutive_soba_penalties) + sum(all_long_consecutive_penalties))
+    elif consecutive_soba_penalties:
         model.Minimize(sum(consecutive_soba_penalties))
+    elif all_long_consecutive_penalties:
+        model.Minimize(sum(all_long_consecutive_penalties))
 
     # --- 4. 実行と結果出力 ---
     solver = cp_model.CpSolver()
