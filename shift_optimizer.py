@@ -125,6 +125,10 @@ def solve():
         # 連勤制限（YAMLの設定値を使用）
         for d_idx in range(len(date_list) - max_consecutive):
             model.Add(sum(shifts[(name, d_idx + k)] for k in range(max_consecutive + 1)) <= max_consecutive)
+        
+        # 連続休日を最大3日に制限（休みを分散させる）
+        for d_idx in range(len(date_list) - 3):
+            model.Add(sum(1 - shifts[(name, d_idx + k)] for k in range(4)) <= 3)
 
     # --- 4. 実行と結果出力 ---
     solver = cp_model.CpSolver()
@@ -201,8 +205,9 @@ def solve():
             yu_kyuu_row[disp_name] = yu_kyuu_count
         stats_rows.append(yu_kyuu_row)
         
-        # 総勤務時間
+        # 総勤務時間（休憩時間を引く前）
         total_hours_row = {'日付': '総時間数', '曜': ''}
+        staff_total_hours = {}  # 後で使うため保存
         for _, s_row in df_staff.iterrows():
             name = str(s_row['名前'])
             disp_name = name.replace('●', '').strip()
@@ -220,8 +225,51 @@ def solve():
                         total_hours += hours
                     except:
                         total_hours += 9  # デフォルト9時間
+            staff_total_hours[disp_name] = total_hours
             total_hours_row[disp_name] = int(total_hours) if total_hours == int(total_hours) else round(total_hours, 1)
         stats_rows.append(total_hours_row)
+        
+        # 休憩時間を引いた実働時間
+        work_hours_row = {'日付': '実働時間', '曜': ''}
+        staff_work_hours = {}  # 後で使うため保存
+        for _, s_row in df_staff.iterrows():
+            name = str(s_row['名前'])
+            disp_name = name.replace('●', '').strip()
+            total = staff_total_hours[disp_name]
+            work_days = len(date_list) - int(s_row['月間休日数'])
+            avg_hours_per_day = total / work_days if work_days > 0 else 0
+            
+            # 休憩時間の計算
+            if avg_hours_per_day < 6:
+                break_time = 0
+            elif avg_hours_per_day <= 8:
+                break_time = 0.75 * work_days  # 45分 = 0.75時間
+            else:
+                break_time = 1.0 * work_days  # 1時間
+            
+            work_hours = total - break_time
+            staff_work_hours[disp_name] = work_hours
+            work_hours_row[disp_name] = int(work_hours) if work_hours == int(work_hours) else round(work_hours, 1)
+        stats_rows.append(work_hours_row)
+        
+        # 法定時間数（月の日数×40÷7）
+        days_in_period = len(date_list)
+        legal_hours = days_in_period * 40 / 7
+        legal_hours_row = {'日付': '法定時間数', '曜': ''}
+        for _, s_row in df_staff.iterrows():
+            name = str(s_row['名前'])
+            disp_name = name.replace('●', '').strip()
+            legal_hours_row[disp_name] = round(legal_hours, 1)
+        stats_rows.append(legal_hours_row)
+        
+        # 差分（実働時間 - 法定時間数）
+        diff_hours_row = {'日付': '差分', '曜': ''}
+        for _, s_row in df_staff.iterrows():
+            name = str(s_row['名前'])
+            disp_name = name.replace('●', '').strip()
+            diff = staff_work_hours[disp_name] - legal_hours
+            diff_hours_row[disp_name] = f"{diff:+.1f}"  # プラス記号を付ける
+        stats_rows.append(diff_hours_row)
         
         # --- 出勤人数を追加 ---
         for i, row in enumerate(res):
