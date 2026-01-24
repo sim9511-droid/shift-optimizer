@@ -159,6 +159,22 @@ def solve():
             for j in range(i+1, len(soba_counts)):
                 model.Add(soba_counts[i] - soba_counts[j] <= 2)
                 model.Add(soba_counts[j] - soba_counts[i] <= 2)
+    
+    # そば打ちの連続を最小化（できる限り毎日交代する）
+    # 連続する2日間で同じ人がそば打ちを担当しないようにする
+    consecutive_soba_penalties = []
+    for name in soba_staff:
+        for d_idx in range(len(date_list) - 1):
+            # 連続そば打ちの検出用変数
+            consecutive = model.NewBoolVar(f'consecutive_soba_{name}_{d_idx}')
+            # 2日連続でそば打ちをした場合にconsecutive=1
+            model.Add(soba[(name, d_idx)] + soba[(name, d_idx + 1)] == 2).OnlyEnforceIf(consecutive)
+            model.Add(soba[(name, d_idx)] + soba[(name, d_idx + 1)] <= 1).OnlyEnforceIf(consecutive.Not())
+            consecutive_soba_penalties.append(consecutive)
+    
+    # 連続そば打ちを最小化する（目的関数）
+    if consecutive_soba_penalties:
+        model.Minimize(sum(consecutive_soba_penalties))
 
     # --- 4. 実行と結果出力 ---
     solver = cp_model.CpSolver()
