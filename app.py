@@ -108,7 +108,8 @@ with tab1:
                                     data=f,
                                     file_name=f"shift_schedule_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
                                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                                    use_container_width=True
+                                    use_container_width=True,
+                                    key="download_optimized_shift"
                                 )
                         except Exception as e:
                             st.warning(f"プレビューの表示に失敗しました: {e}")
@@ -505,7 +506,8 @@ with tab3:
                         label="⬇️ 更新したファイルをダウンロード",
                         data=f,
                         file_name="Shift_Input.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key="download_wish_sheet"
                     )
         
         except Exception as e:
@@ -670,7 +672,8 @@ with tab5:
                         label="⬇️ 更新したファイルをダウンロード",
                         data=f,
                         file_name="Shift_Input.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        key="download_staff_sheet"
                     )
         
         except Exception as e:
@@ -705,7 +708,8 @@ if os.path.exists('shift_schedule_final.xlsx') and not st.session_state.get('jus
                     label="⬇️ この結果をダウンロード",
                     data=f,
                     file_name="shift_schedule_final.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    key="download_previous_result"
                 )
     except:
         pass

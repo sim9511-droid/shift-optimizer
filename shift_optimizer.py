@@ -16,21 +16,21 @@ def generate_date_range(year, month, start_day, end_day):
     指定された年月と開始日、終了日から日付リストを生成
     Args:
         year: 年
-        month: 月
+        month: 月（基準月）
         start_day: 開始日
         end_day: 終了日
     Returns:
         日付のリスト（datetime.date型）
     """
-    # start_day > end_day の場合、前月のstart_dayから当月のend_dayまで
+    # start_day > end_day の場合、当月のstart_dayから翌月のend_dayまで
     if start_day > end_day:
-        # 前月の開始日
-        if month == 1:
-            start_date = datetime.date(year - 1, 12, start_day)
+        # 当月の開始日
+        start_date = datetime.date(year, month, start_day)
+        # 翌月の終了日
+        if month == 12:
+            end_date = datetime.date(year + 1, 1, end_day)
         else:
-            start_date = datetime.date(year, month - 1, start_day)
-        # 当月の終了日
-        end_date = datetime.date(year, month, end_day)
+            end_date = datetime.date(year, month + 1, end_day)
     else:
         # 同じ月内
         start_date = datetime.date(year, month, start_day)
