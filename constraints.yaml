@@ -1,6 +1,6 @@
 period:
   start_day: 21
-  end_day: 20
+  end_day: 20  # 21日から翌月20日までの期間
 
 rules:
   daily_min_staff: 3

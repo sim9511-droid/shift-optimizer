@@ -11,6 +11,38 @@ def load_constraints(yaml_file='constraints.yaml'):
         config = yaml.safe_load(f)
     return config
 
+def generate_date_range(year, month, start_day, end_day):
+    """
+    指定された年月と開始日、終了日から日付リストを生成
+    Args:
+        year: 年
+        month: 月
+        start_day: 開始日
+        end_day: 終了日
+    Returns:
+        日付のリスト（datetime.date型）
+    """
+    start_date = datetime.date(year, month, start_day)
+    
+    if start_day > end_day:  # 月を跨ぐ場合（開始日が終了日より後）
+        # 開始日が月内、終了日が翌月
+        if month == 12:
+            end_date = datetime.date(year + 1, 1, end_day)
+        else:
+            end_date = datetime.date(year, month + 1, end_day)
+    else:
+        # 同じ月内
+        end_date = datetime.date(year, month, end_day)
+    
+    # 期間内の全日付を生成（start_dateを含む、end_dateを含む）
+    date_list = []
+    tmp = start_date
+    while tmp <= end_date:
+        date_list.append(tmp)
+        tmp += datetime.timedelta(days=1)
+    
+    return date_list
+
 def solve():
     input_file = 'Shift_Input.xlsx'
     
@@ -36,6 +68,9 @@ def solve():
     start_day = period_config['start_day']
     end_day = period_config['end_day']
     
+    print(f"[DEBUG] constraints.yaml から読み込んだ期間設定: start_day={start_day}, end_day={end_day}")
+    print(f"[DEBUG] Shift_Input.xlsx から読み込んだ年月: year={year}, month={month}")
+    
     # 祝日を設定シートのD列から読み込み
     holidays_list = []
     for i in range(len(df_set)):
@@ -46,21 +81,14 @@ def solve():
             except:
                 pass
     
-    # 21日〜翌月20日 (または指定された日付範囲)
-    date_list = []
-    start_date = datetime.date(year, month, start_day)
-    if end_day < start_day:  # 翌月に跨ぐ場合
-        if month == 12:
-            end_date = datetime.date(year + 1, 1, end_day)
-        else:
-            end_date = datetime.date(year, month + 1, end_day)
-    else:
-        end_date = datetime.date(year, month, end_day)
+    # 日付リストを生成（共通関数を使用）
+    date_list = generate_date_range(year, month, start_day, end_day)
     
-    tmp = start_date
-    while tmp <= end_date:
-        date_list.append(tmp)
-        tmp += datetime.timedelta(days=1)
+    print(f"[DEBUG] 計算された期間: {date_list[0]} ～ {date_list[-1]}")
+    print(f"[DEBUG] 生成された日付リストの件数: {len(date_list)} 日間")
+    print(f"[DEBUG] 最初の3日: {date_list[:3] if len(date_list) >= 3 else date_list}")
+    if len(date_list) > 3:
+        print(f"[DEBUG] 最後の3日: {date_list[-3:]}")
 
     model = cp_model.CpModel()
     shifts = {}

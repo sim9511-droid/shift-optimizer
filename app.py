@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import datetime
-from shift_optimizer import solve
+from shift_optimizer import solve, generate_date_range, load_constraints
 import os
 
 st.set_page_config(page_title="シフト最適化システム", page_icon="📅", layout="wide")
@@ -185,6 +185,78 @@ with tab2:
 # タブ3: 希望休入力
 with tab3:
     st.subheader("📝 希望休の入力・編集")
+    
+    # 日付範囲修正ボタンを追加
+    st.markdown("### 🔧 ユーティリティ")
+    col_fix1, col_fix2 = st.columns(2)
+    
+    with col_fix1:
+        if st.button("🔄 希望休シートの日付範囲を修正", type="secondary"):
+            """
+            希望休シートの日付範囲を、constraints.yamlの設定に基づいて修正
+            """
+            try:
+                # 設定を読み込み
+                constraints = load_constraints()
+                period_config = constraints['period']
+                start_day = period_config['start_day']
+                end_day = period_config['end_day']
+                
+                # 設定シートから年月を読み込み
+                df_set = pd.read_excel('Shift_Input.xlsx', sheet_name='設定', header=None)
+                year = int(df_set.iloc[0, 1])
+                month = int(df_set.iloc[1, 1])
+                
+                # 正しい日付範囲を生成
+                date_list = generate_date_range(year, month, start_day, end_day)
+                
+                # 既存の希望休シートから休日回数シートを読み込み
+                df_staff = pd.read_excel('Shift_Input.xlsx', sheet_name='休日回数')
+                staff_names = [name.replace('●', '').strip() for _, name in df_staff['名前'].items()]
+                
+                # 新しい希望休シートを作成
+                new_data = {'日付': date_list}
+                for name in staff_names:
+                    new_data[name] = [''] * len(date_list)
+                
+                df_new_wish = pd.DataFrame(new_data)
+                
+                # Excelファイルに書き込み
+                from openpyxl import load_workbook
+                from openpyxl.styles import PatternFill, Font, Border, Side
+                
+                # 既存のシートを読み込み
+                with pd.ExcelFile('Shift_Input.xlsx') as xls:
+                    sheets = {}
+                    for sheet_name in xls.sheet_names:
+                        if sheet_name != '希望休':
+                            sheets[sheet_name] = pd.read_excel(xls, sheet_name=sheet_name, header=None if sheet_name == '設定' else 0)
+                
+                sheets['希望休'] = df_new_wish
+                
+                # Excelファイルに書き込み
+                with pd.ExcelWriter('Shift_Input.xlsx', engine='openpyxl') as writer:
+                    for sheet_name, df in sheets.items():
+                        df.to_excel(writer, sheet_name=sheet_name, index=False, header=True if sheet_name != '設定' else False)
+                
+                # スタイリングを適用
+                wb = load_workbook('Shift_Input.xlsx')
+                ws = wb['希望休']
+                
+                # 日付列をフォーマット
+                for row in range(2, len(date_list) + 2):
+                    cell = ws.cell(row, 1)
+                    cell.number_format = 'yyyy/mm/dd'
+                
+                wb.save('Shift_Input.xlsx')
+                
+                st.success(f"✅ 希望休シートの日付範囲を修正しました！({len(date_list)}日間: {date_list[0]} ～ {date_list[-1]})")
+                st.rerun()
+                
+            except Exception as e:
+                st.error(f"❌ 修正に失敗しました: {e}")
+                import traceback
+                st.code(traceback.format_exc())
     
     if os.path.exists('Shift_Input.xlsx'):
         try:
