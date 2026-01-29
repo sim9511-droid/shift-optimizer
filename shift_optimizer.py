@@ -22,16 +22,18 @@ def generate_date_range(year, month, start_day, end_day):
     Returns:
         日付のリスト（datetime.date型）
     """
-    start_date = datetime.date(year, month, start_day)
-    
-    if start_day > end_day:  # 月を跨ぐ場合（開始日が終了日より後）
-        # 開始日が月内、終了日が翌月
-        if month == 12:
-            end_date = datetime.date(year + 1, 1, end_day)
+    # start_day > end_day の場合、前月のstart_dayから当月のend_dayまで
+    if start_day > end_day:
+        # 前月の開始日
+        if month == 1:
+            start_date = datetime.date(year - 1, 12, start_day)
         else:
-            end_date = datetime.date(year, month + 1, end_day)
+            start_date = datetime.date(year, month - 1, start_day)
+        # 当月の終了日
+        end_date = datetime.date(year, month, end_day)
     else:
         # 同じ月内
+        start_date = datetime.date(year, month, start_day)
         end_date = datetime.date(year, month, end_day)
     
     # 期間内の全日付を生成（start_dateを含む、end_dateを含む）
