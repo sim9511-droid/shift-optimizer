@@ -71,7 +71,7 @@ with st.sidebar:
         st.error("❌ constraints.yaml が見つかりません")
 
 # タブを作成
-tab1, tab2, tab3, tab4 = st.tabs(["🚀 シフト最適化", "📋 設定ファイル確認", "📝 希望休入力", "⚙️ 制約条件設定"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["🚀 シフト最適化", "📋 設定ファイル確認", "📝 希望休入力", "⚙️ 制約条件設定", "👥 スタッフ情報編集"])
 
 # タブ1: シフト最適化
 with tab1:
@@ -560,6 +560,124 @@ with tab4:
         """)
     else:
         st.warning("⚠️ constraints.yaml が見つかりません")
+
+# タブ5: スタッフ情報編集
+with tab5:
+    st.subheader("👥 スタッフ情報の編集")
+    
+    if os.path.exists('Shift_Input.xlsx'):
+        try:
+            # 休日回数シートを読み込み
+            df_staff = pd.read_excel('Shift_Input.xlsx', sheet_name='休日回数', header=0)
+            
+            # データを表示・編集
+            st.markdown("### 📋 スタッフ基本情報")
+            st.info("スタッフの基本情報を入力・編集できます。名前、月間休日数、勤務時間、そば打ち対応などを管理してください。")
+            
+            # 全データをまず文字列型に変換してからNoneを処理
+            df_staff_display = df_staff.copy()
+            for col in df_staff_display.columns:
+                if col != '名前':
+                    df_staff_display[col] = df_staff_display[col].astype('object')
+                    df_staff_display[col] = df_staff_display[col].apply(
+                        lambda x: '' if (pd.isna(x) or x is None or str(x).lower() == 'none' or str(x).lower() == 'nan') else str(x).strip()
+                    )
+            
+            # 列の設定
+            column_config = {
+                '名前': st.column_config.TextColumn('名前', required=True),
+                '月間休日数': st.column_config.NumberColumn('月間休日数', min_value=0, max_value=31, required=True),
+                '基本勤務時間': st.column_config.TextColumn('基本勤務時間', help='例: 9:00-18:00'),
+                'そば打ち': st.column_config.SelectboxColumn('そば打ち', options=['', '〇', '×']),
+                'そば打ち時の時間': st.column_config.TextColumn('そば打ち時の時間', help='例: 8:00-17:00'),
+            }
+            
+            # 編集可能なデータフレーム
+            edited_staff = st.data_editor(
+                df_staff_display,
+                column_config=column_config,
+                num_rows="dynamic",
+                use_container_width=True,
+                height=400,
+                hide_index=True
+            )
+            
+            # 保存ボタン
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("💾 スタッフ情報を保存", type="primary"):
+                    try:
+                        from openpyxl import load_workbook
+                        from openpyxl.styles import Border, Side
+                        
+                        # 既存のExcelファイルを読み込み
+                        with pd.ExcelFile('Shift_Input.xlsx') as xls:
+                            sheets = {}
+                            for sheet_name in xls.sheet_names:
+                                if sheet_name != '休日回数':
+                                    sheets[sheet_name] = pd.read_excel(xls, sheet_name=sheet_name, header=None if sheet_name == '設定' else 0)
+                        
+                        # 空文字列をNaNに戻す（元のExcel形式に合わせる）
+                        df_to_save = edited_staff.copy()
+                        df_to_save = df_to_save.replace('', None)
+                        
+                        # 休日回数シートを更新
+                        sheets['休日回数'] = df_to_save
+                        
+                        # Excelファイルに書き戻し
+                        with pd.ExcelWriter('Shift_Input.xlsx', engine='openpyxl') as writer:
+                            for sheet_name, df in sheets.items():
+                                df.to_excel(writer, sheet_name=sheet_name, index=False, header=True if sheet_name != '設定' else False)
+                        
+                        # スタイリングを適用
+                        wb = load_workbook('Shift_Input.xlsx')
+                        ws = wb['休日回数']
+                        
+                        # 罫線の定義
+                        thin_border = Border(
+                            left=Side(style='thin'),
+                            right=Side(style='thin'),
+                            top=Side(style='thin'),
+                            bottom=Side(style='thin')
+                        )
+                        
+                        # 全セルに罫線を適用
+                        for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=ws.max_column):
+                            for cell in row:
+                                cell.border = thin_border
+                        
+                        # 列の幅を調整
+                        ws.column_dimensions['A'].width = 12  # 名前
+                        ws.column_dimensions['B'].width = 12  # 月間休日数
+                        ws.column_dimensions['C'].width = 15  # 基本勤務時間
+                        ws.column_dimensions['D'].width = 10  # そば打ち
+                        ws.column_dimensions['E'].width = 15  # そば打ち時の時間
+                        
+                        wb.save('Shift_Input.xlsx')
+                        
+                        st.success("✅ スタッフ情報を保存しました！")
+                        st.balloons()
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ 保存に失敗しました: {e}")
+                        import traceback
+                        st.code(traceback.format_exc())
+            
+            with col2:
+                # ダウンロードボタン
+                with open('Shift_Input.xlsx', 'rb') as f:
+                    st.download_button(
+                        label="⬇️ 更新したファイルをダウンロード",
+                        data=f,
+                        file_name="Shift_Input.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+        
+        except Exception as e:
+            st.error(f"❌ エラーが発生しました: {e}")
+            st.exception(e)
+    else:
+        st.warning("⚠️ Shift_Input.xlsx が見つかりません")
 
 # フッター
 st.markdown("---")
