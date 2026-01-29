@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# 出力ファイル
+shift_schedule_final.xlsx
+*.xlsx~
+
+# 環境変数・機密情報
+.env
+.env.local
+secrets.toml
+*.pem
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ログ
+*.log
+
+# 一時ファイル
+*.tmp
+*.bak
